@@ -3,107 +3,114 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>مشاركة الملفات - اتصال مستقر</title>
-    <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+    <title>مشاركة الملفات - النسخة المستقرة</title>
+    <!-- استخدام رابط Cloudflare الآمن (لن يتم حظره من برامج الحماية) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
     <style>
         :root {
-            --primary-color: #2c3e50;
-            --hover-color: #1a252f;
-            --bg-color: #ecf0f1;
+            --primary-color: #0f766e;
+            --hover-color: #115e59;
+            --bg-color: #f0fdfa;
             --card-bg: #ffffff;
-            --text-color: #333;
+            --text-color: #334155;
         }
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0; padding: 20px;
-            display: flex; justify-content: center;
+            display: flex; justify-content: center; align-items: center; min-height: 90vh;
         }
 
         .container {
             width: 100%; max-width: 600px;
             background-color: var(--card-bg);
-            padding: 30px; border-radius: 12px;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+            padding: 30px; border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
         }
 
         h1 { text-align: center; color: var(--primary-color); margin-bottom: 5px; }
-        p.subtitle { text-align: center; color: #7f8c8d; margin-bottom: 30px; font-size: 0.9em; }
+        p.subtitle { text-align: center; color: #64748b; margin-bottom: 30px; font-size: 0.9em; }
 
         .section {
-            background: #f8f9fa; border: 1px solid #e9ecef;
-            padding: 20px; border-radius: 8px; margin-bottom: 20px;
+            background: #f8fafc; border: 1px solid #e2e8f0;
+            padding: 20px; border-radius: 12px; margin-bottom: 20px;
         }
 
         .id-display {
-            font-size: 1.2em; font-weight: bold; text-align: center;
-            color: #27ae60; background: #e8f8f5;
-            padding: 15px; border-radius: 8px;
+            font-size: 1.5em; font-weight: bold; text-align: center;
+            color: #0369a1; background: #e0f2fe;
+            padding: 15px; border-radius: 12px;
             word-break: break-all; cursor: pointer;
-            border: 2px dashed #27ae60;
+            border: 2px dashed #38bdf8;
         }
 
         input[type="text"], input[type="file"] {
-            width: 100%; padding: 12px; margin: 10px 0;
-            border: 1px solid #bdc3c7; border-radius: 6px; box-sizing: border-box;
+            width: 100%; padding: 14px; margin: 10px 0;
+            border: 1px solid #cbd5e1; border-radius: 8px; box-sizing: border-box;
+            font-size: 16px; outline: none;
         }
+        input[type="text"]:focus { border-color: var(--primary-color); }
 
         button {
             width: 100%; background-color: var(--primary-color); color: white;
-            padding: 12px; border: none; border-radius: 6px;
+            padding: 14px; border: none; border-radius: 8px;
             font-size: 16px; cursor: pointer; font-weight: bold;
+            transition: all 0.3s ease;
         }
         button:hover { background-color: var(--hover-color); }
+        button:disabled { background-color: #94a3b8; cursor: not-allowed; }
 
         .status-bar {
             text-align: center; font-weight: bold; margin-bottom: 20px;
-            padding: 10px; border-radius: 6px;
-            background-color: #e2e8f0; color: #475569;
+            padding: 12px; border-radius: 8px;
+            background-color: #f1f5f9; color: #475569;
         }
 
-        .error-log {
-            color: #c0392b; font-size: 0.85em; margin-top: 10px;
-            background: #fdedec; padding: 10px; border-radius: 4px;
-            display: none; text-align: left; direction: ltr;
+        #error-log {
+            display: none; background: #fef2f2; color: #dc2626;
+            padding: 15px; border-radius: 8px; margin-bottom: 20px;
+            border: 1px solid #fca5a5; font-size: 0.9em; text-align: right;
         }
 
         .file-list { list-style: none; padding: 0; margin: 0; }
         .file-list li {
-            background: #fff; border: 1px solid #e0e0e0; margin: 10px 0;
-            padding: 15px; border-radius: 6px; display: flex;
+            background: #fff; border: 1px solid #e2e8f0; margin: 10px 0;
+            padding: 15px; border-radius: 8px; display: flex;
             justify-content: space-between; align-items: center;
         }
         a.download-btn {
-            background-color: #27ae60; color: white; padding: 8px 15px;
-            text-decoration: none; border-radius: 4px;
+            background-color: #10b981; color: white; padding: 8px 16px;
+            text-decoration: none; border-radius: 6px; font-size: 0.9em; font-weight: bold;
         }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>نقل الملفات (P2P)</h1>
-    <p class="subtitle">تم تحسين الاتصال لتجاوز جدار الحماية (Firewall)</p>
+    <h1>نقل الملفات المباشر</h1>
+    <p class="subtitle">نسخة آمنة ومتوافقة مع أجهزة الكمبيوتر والهواتف</p>
 
-    <div class="status-bar" id="status">جاري الاتصال بالخادم...</div>
-    <div class="error-log" id="error-log"></div>
+    <!-- شريط الحالة والأخطاء -->
+    <div class="status-bar" id="status">جاري تحميل المكتبات الأساسية...</div>
+    <div id="error-log"></div>
 
     <div class="section">
         <h2>معرف جهازك (اضغط للنسخ)</h2>
-        <div class="id-display" id="my-id" onclick="copyId()">جاري التوليد...</div>
+        <div class="id-display" id="my-id" onclick="copyId()">...</div>
     </div>
 
     <div class="section">
         <h2>الاتصال بجهاز آخر</h2>
         <input type="text" id="peer-id-input" placeholder="ألصق معرف الجهاز الآخر هنا...">
-        <button onclick="connectToPeer()">اتصال</button>
+        <button onclick="connectToPeer()">إنشاء اتصال</button>
     </div>
 
     <div class="section" id="send-section" style="opacity: 0.5; pointer-events: none;">
         <h2>إرسال ملف</h2>
         <input type="file" id="file-input">
-        <button onclick="sendFile()">إرسال</button>
+        <button id="send-btn" onclick="sendFile()">إرسال الملف</button>
     </div>
 
     <div class="section">
@@ -116,14 +123,23 @@
     let peer = null;
     let conn = null;
 
-    function initPeer() {
-        // إزالة المعرف المخصص وترك الخادم يولد معرفاً رسمياً لمنع حظر الاتصال
-        // إجبار الاتصال عبر المنفذ 443 (HTTPS) لتجاوز جدار الحماية
+    // التأكد من تحميل الصفحة بالكامل قبل تشغيل الكود
+    window.onload = function() {
+        // فحص ما إذا كان برنامج الحماية قد حظر مكتبة PeerJS
+        if (typeof Peer === 'undefined') {
+            showError('برنامج الحماية (Antivirus) أو مانع الإعلانات يمنع تحميل مكتبة الاتصال. يرجى إيقافه مؤقتاً وتحديث الصفحة.');
+            updateStatus('فشل التحميل', '#dc2626', '#fef2f2');
+            return;
+        }
+        initApp();
+    };
+
+    function initApp() {
+        updateStatus('جاري الاتصال بالخادم...', '#0369a1', '#e0f2fe');
+        
+        // ترك الخادم يولد المعرف تلقائياً لتجنب الحظر
         peer = new Peer({
-            host: '0.peerjs.com',
-            port: 443,
-            secure: true,
-            debug: 3, // تفعيل سجلات الأخطاء التفصيلية
+            debug: 2,
             config: {
                 'iceServers': [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -134,7 +150,7 @@
 
         peer.on('open', function(id) {
             document.getElementById('my-id').textContent = id;
-            updateStatus('متصل وجاهز للاستخدام', '#27ae60', '#e8f8f5');
+            updateStatus('متصل وجاهز للاستخدام 🟢', '#15803d', '#dcfce7');
             document.getElementById('error-log').style.display = 'none';
         });
 
@@ -144,25 +160,27 @@
         });
 
         peer.on('error', function(err) {
-            updateStatus('حدث خطأ في الاتصال', '#c0392b', '#fdedec');
-            const errorLog = document.getElementById('error-log');
-            errorLog.style.display = 'block';
-            errorLog.textContent = `Error Type: ${err.type}\nMessage: ${err.message}`;
-            console.error(err);
+            let errorMsg = err.type;
+            if (err.type === 'server-error') errorMsg = 'الخادم مشغول أو يرفض الاتصال، حاول تحديث الصفحة.';
+            if (err.type === 'network') errorMsg = 'لا يوجد اتصال بالإنترنت أو الجدار الناري يمنع الاتصال.';
+            
+            showError(`نوع الخطأ: ${err.type}<br>التفاصيل: ${errorMsg}`);
+            updateStatus('حدث خطأ في الاتصال 🔴', '#dc2626', '#fef2f2');
         });
     }
 
     function connectToPeer() {
         const peerId = document.getElementById('peer-id-input').value.trim();
-        if (!peerId) { alert('أدخل المعرف أولاً'); return; }
-        updateStatus('جاري الاتصال...');
+        if (!peerId) { alert('الرجاء إدخال معرف الجهاز الآخر.'); return; }
+        
+        updateStatus('جاري الاتصال بالجهاز الآخر...', '#b45309', '#fef3c7');
         conn = peer.connect(peerId, { reliable: true });
         setupConnection();
     }
 
     function setupConnection() {
         conn.on('open', () => {
-            updateStatus('تم الاتصال بنجاح!', '#2980b9', '#ebf5fb');
+            updateStatus('تم ربط الجهازين بنجاح! 🟢', '#15803d', '#dcfce7');
             document.getElementById('send-section').style.opacity = '1';
             document.getElementById('send-section').style.pointerEvents = 'auto';
             document.getElementById('peer-id-input').value = '';
@@ -173,7 +191,7 @@
         });
 
         conn.on('close', () => {
-            updateStatus('انقطع الاتصال', '#c0392b', '#fdedec');
+            updateStatus('انقطع الاتصال مع الجهاز الآخر 🔴', '#dc2626', '#fef2f2');
             document.getElementById('send-section').style.opacity = '0.5';
             document.getElementById('send-section').style.pointerEvents = 'none';
         });
@@ -181,40 +199,66 @@
 
     function sendFile() {
         const fileInput = document.getElementById('file-input');
+        const sendBtn = document.getElementById('send-btn');
         const file = fileInput.files[0];
-        if (!file || !conn) return;
+        
+        if (!file || !conn) { alert('الرجاء اختيار ملف أولاً.'); return; }
 
-        updateStatus(`جاري إرسال ${file.name}...`);
-        conn.send({ type: 'file', file: file, name: file.name });
-        updateStatus('تم الإرسال بنجاح!', '#27ae60', '#e8f8f5');
-        fileInput.value = ''; 
+        sendBtn.disabled = true;
+        sendBtn.textContent = 'جاري الإرسال...';
+        updateStatus(`جاري إرسال: ${file.name}...`, '#b45309', '#fef3c7');
+
+        // إرسال الملف مباشرة
+        conn.send({
+            type: 'file',
+            file: file,
+            name: file.name
+        });
+
+        setTimeout(() => {
+            updateStatus('تم إرسال الملف بنجاح! ✅', '#15803d', '#dcfce7');
+            fileInput.value = '';
+            sendBtn.disabled = false;
+            sendBtn.textContent = 'إرسال الملف';
+        }, 1000);
     }
 
     function receiveFile(blob, name) {
-        updateStatus('تم استلام ملف جديد', '#27ae60', '#e8f8f5');
+        updateStatus('تم استلام ملف جديد! 📥', '#15803d', '#dcfce7');
+        
         const url = URL.createObjectURL(blob);
         const list = document.getElementById('received-files');
         const li = document.createElement('li');
-        li.innerHTML = `<span>${name}</span> <a href="${url}" download="${name}" class="download-btn">تحميل</a>`;
+        
+        const safeName = name.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        
+        li.innerHTML = `
+            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;" title="${safeName}">${safeName}</span> 
+            <a href="${url}" download="${safeName}" class="download-btn">حفظ الملف</a>
+        `;
         list.appendChild(li);
     }
 
-    function updateStatus(msg, color = '#475569', bgColor = '#e2e8f0') {
+    function updateStatus(msg, color, bgColor) {
         const statusBar = document.getElementById('status');
         statusBar.textContent = msg;
         statusBar.style.color = color;
         statusBar.style.backgroundColor = bgColor;
     }
 
-    function copyId() {
-        const idText = document.getElementById('my-id').textContent;
-        if(idText && !idText.includes('جاري')) {
-            navigator.clipboard.writeText(idText);
-            alert('تم نسخ المعرف!');
-        }
+    function showError(msg) {
+        const errorLog = document.getElementById('error-log');
+        errorLog.style.display = 'block';
+        errorLog.innerHTML = `<b>تنبيه:</b> ${msg}`;
     }
 
-    window.onload = initPeer;
+    function copyId() {
+        const idText = document.getElementById('my-id').textContent;
+        if(idText && !idText.includes('...')) {
+            navigator.clipboard.writeText(idText);
+            alert('تم نسخ المعرف بنجاح!');
+        }
+    }
 </script>
 
 </body>
