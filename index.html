@@ -26,15 +26,15 @@
         }
         
         .code-display {
-            font-size: 2em; font-weight: bold; color: #ea580c; background: #ffedd5;
-            padding: 15px; border-radius: 8px; letter-spacing: 3px; margin: 15px 0;
+            font-size: 2.5em; font-weight: bold; color: #ea580c; background: #ffedd5;
+            padding: 15px; border-radius: 8px; letter-spacing: 5px; margin: 15px 0;
             border: 2px dashed #fdba74; text-transform: uppercase;
         }
 
         input[type="text"] {
             width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #cbd5e1;
-            border-radius: 8px; box-sizing: border-box; font-size: 20px;
-            text-align: center; text-transform: uppercase; letter-spacing: 2px; outline: none;
+            border-radius: 8px; box-sizing: border-box; font-size: 24px;
+            text-align: center; letter-spacing: 3px; outline: none;
         }
         input[type="text"]:focus { border-color: var(--primary); }
         
@@ -57,16 +57,19 @@
         .file-list { list-style: none; padding: 0; }
         .file-list li {
             background: #ecfdf5; border: 1px solid #a7f3d0; padding: 15px;
-            border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px;
+            border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 10px; align-items: center;
         }
         a.download-btn { background: #10b981; color: white; padding: 6px 15px; text-decoration: none; border-radius: 6px; font-weight: bold;}
     </style>
+    
+    <!-- إضافة مكتبة PeerJS للاتصال المباشر بدون مشاكل CORS -->
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 </head>
 <body>
 
 <div class="container">
     <h1>مشاركة الملفات المباشرة</h1>
-    <p class="subtitle">تجاوز الحظر باستخدام كود قصير (بدون خوادم P2P)</p>
+    <p class="subtitle">اتصال آمن وسريع من نظير إلى نظير (P2P)</p>
 
     <div class="status" id="status">اختر: هل تريد إنشاء كود أم إدخال كود؟</div>
 
@@ -75,7 +78,7 @@
         <button id="btn-create" onclick="createRoom()">1. إنشاء كود اتصال (للكمبيوتر)</button>
         <div id="code-container" style="display: none;">
             <p style="margin-bottom: 5px; color: #475569;">اكتب هذا الكود في الجهاز الآخر:</p>
-            <div class="code-display" id="room-code">جاري التوليد...</div>
+            <div class="code-display" id="room-code">...</div>
             <p style="font-size: 0.85em; color: #ef4444;" id="poll-status">بانتظار اتصال الجهاز الآخر...</p>
         </div>
     </div>
@@ -83,11 +86,12 @@
     <!-- قسم الانضمام -->
     <div class="box" id="join-section">
         <p style="margin-top: 0; color: #475569; font-weight: bold;">أو</p>
-        <input type="text" id="input-code" placeholder="أدخل الكود هنا..." maxlength="19">
+        <!-- الكود الآن مكون من 6 أرقام فقط لتسهيل الإدخال -->
+        <input type="text" id="input-code" placeholder="مثال: 123-456" maxlength="7">
         <button id="btn-join" onclick="joinRoom()" style="background-color: #10b981;">2. اتصال بالجهاز (للهاتف)</button>
     </div>
 
-    <!-- منطقة إرسال الملفات (تظهر بعد الاتصال) -->
+    <!-- منطقة إرسال الملفات -->
     <div class="file-area" id="file-area">
         <h3 style="color: #059669; text-align: center;">✅ تم ربط الجهازين بنجاح!</h3>
         <input type="file" id="file-input">
@@ -99,149 +103,103 @@
 </div>
 
 <script>
-    const API_URL = "https://api.npoint.io"; // خدمة تخزين نصوص مجانية وعامة
-    let pc;
-    let dataChannel;
-    let checkInterval;
-    let myRoomId = "";
+    let peer;
+    let conn;
+    const PREFIX = "smart-file-share-"; // بادئة لضمان عدم تداخل الأكواد مع مستخدمين آخرين
 
-    // تنسيق الكود ليكون سهل القراءة (xxxx-xxxx-xxxx)
+    // توليد كود عشوائي من 6 أرقام
+    function generateShortCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+
+    // تنسيق الكود ليكون (123-456)
     function formatCode(str) {
-        return str.replace(/(.{4})/g, '$1-').slice(0, -1).toUpperCase();
-    }
-
-    // إعداد WebRTC الأساسي
-    function setupWebRTC() {
-        pc = new RTCPeerConnection({
-            iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
-        });
-
-        pc.oniceconnectionstatechange = () => {
-            if (pc.iceConnectionState === 'connected') {
-                document.getElementById('status').textContent = 'متصلان وجاهزان لتبادل الملفات! 🟢';
-                document.getElementById('status').style.background = '#d1fae5';
-                document.getElementById('status').style.color = '#065f46';
-                
-                document.getElementById('create-section').style.display = 'none';
-                document.getElementById('join-section').style.display = 'none';
-                document.getElementById('file-area').style.display = 'block';
-            }
-        };
-
-        pc.ondatachannel = (event) => {
-            dataChannel = event.channel;
-            setupDataChannel();
-        };
-    }
-
-    function setupDataChannel() {
-        dataChannel.onmessage = async (event) => {
-            const data = JSON.parse(event.data);
-            const res = await fetch(data.file);
-            const blob = await res.blob();
-            receiveFile(blob, data.name);
-        };
+        return str.replace(/(.{3})/g, '$1-').slice(0, -1);
     }
 
     // 1. إنشاء الغرفة (الكمبيوتر)
-    async function createRoom() {
+    function createRoom() {
         document.getElementById('btn-create').disabled = true;
         document.getElementById('btn-create').textContent = 'جاري التوليد...';
         document.getElementById('join-section').style.opacity = '0.5';
         document.getElementById('join-section').style.pointerEvents = 'none';
+
+        const myCode = generateShortCode();
         
-        setupWebRTC();
-        dataChannel = pc.createDataChannel('fileTransfer');
-        setupDataChannel();
+        // الاتصال بخادم PeerJS باستخدام الكود الخاص بنا
+        peer = new Peer(PREFIX + myCode);
 
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
+        peer.on('open', (id) => {
+            document.getElementById('btn-create').style.display = 'none';
+            document.getElementById('code-container').style.display = 'block';
+            document.getElementById('room-code').textContent = formatCode(myCode);
+        });
 
-        // ننتظر ثواني لجمع مسارات الاتصال ثم نرفعها
-        setTimeout(async () => {
-            try {
-                const res = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ offer: pc.localDescription })
-                });
-                const data = await res.json();
-                myRoomId = data.id; // الحصول على المعرف القصير
+        // عندما يتصل بنا الجهاز الآخر
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+        });
 
-                document.getElementById('btn-create').style.display = 'none';
-                document.getElementById('code-container').style.display = 'block';
-                document.getElementById('room-code').textContent = formatCode(myRoomId);
-                
-                // بدء فحص الرد من الهاتف تلقائياً
-                checkInterval = setInterval(checkForAnswer, 3000);
-            } catch (err) {
-                alert("حدث خطأ في الاتصال بالشبكة.");
-            }
-        }, 2000);
-    }
-
-    // فحص الرد تلقائياً (الكمبيوتر)
-    async function checkForAnswer() {
-        try {
-            const res = await fetch(`${API_URL}/${myRoomId}`);
-            const data = await res.json();
-            
-            if (data.answer) {
-                clearInterval(checkInterval);
-                document.getElementById('poll-status').textContent = "تم التقاط الرد! جاري الربط...";
-                document.getElementById('poll-status').style.color = "#059669";
-                
-                await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-                
-                // خصوصية: مسح البيانات من الإنترنت بعد الاتصال
-                fetch(`${API_URL}/${myRoomId}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ status: "connected_and_cleared" })
-                });
-            }
-        } catch (err) {}
+        peer.on('error', (err) => {
+            console.error(err);
+            alert("حدث خطأ في الاتصال بالخادم.");
+        });
     }
 
     // 2. الانضمام للغرفة (الهاتف)
-    async function joinRoom() {
-        let inputCode = document.getElementById('input-code').value.replace(/-/g, '').toLowerCase();
-        if (inputCode.length < 10) return alert('الرجاء إدخال كود صحيح');
+    function joinRoom() {
+        let inputCode = document.getElementById('input-code').value.replace(/-/g, '').trim();
+        if (inputCode.length < 6) return alert('الرجاء إدخال الكود المكون من 6 أرقام بشكل صحيح');
 
         document.getElementById('btn-join').disabled = true;
         document.getElementById('btn-join').textContent = 'جاري الاتصال...';
 
-        try {
-            // جلب العرض من الإنترنت
-            const res = await fetch(`${API_URL}/${inputCode}`);
-            const data = await res.json();
+        // إنشاء اتصال للجهاز المنضم (بدون تحديد ID مسبق)
+        peer = new Peer();
 
-            if (!data.offer) {
-                document.getElementById('btn-join').disabled = false;
-                document.getElementById('btn-join').textContent = '2. اتصال بالجهاز (للهاتف)';
-                return alert('الكود غير صحيح أو منتهي الصلاحية');
+        peer.on('open', () => {
+            // الاتصال بالجهاز الأول باستخدام الكود
+            conn = peer.connect(PREFIX + inputCode, { reliable: true });
+
+            conn.on('open', () => {
+                setupConnection();
+            });
+
+            conn.on('error', (err) => {
+                alert("فشل الاتصال، تأكد من أن الكود صحيح وأن الجهاز الآخر بانتظارك.");
+                resetJoinButton();
+            });
+        });
+
+        peer.on('error', (err) => {
+            console.error(err);
+            alert("الكود غير صحيح أو أن الجهاز الآخر غير متصل.");
+            resetJoinButton();
+        });
+    }
+
+    function resetJoinButton() {
+        document.getElementById('btn-join').disabled = false;
+        document.getElementById('btn-join').textContent = '2. اتصال بالجهاز (للهاتف)';
+    }
+
+    // إعداد واجهة تبادل الملفات بعد نجاح الاتصال
+    function setupConnection() {
+        document.getElementById('status').textContent = 'متصلان وجاهزان لتبادل الملفات! 🟢';
+        document.getElementById('status').style.background = '#d1fae5';
+        document.getElementById('status').style.color = '#065f46';
+        
+        document.getElementById('create-section').style.display = 'none';
+        document.getElementById('join-section').style.display = 'none';
+        document.getElementById('file-area').style.display = 'block';
+
+        // استقبال البيانات (الملفات)
+        conn.on('data', (data) => {
+            if (data.file && data.name) {
+                receiveFile(data.file, data.name);
             }
-
-            setupWebRTC();
-            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-
-            // ننتظر ثواني لجمع مسارات الاتصال ثم نرفع الرد
-            setTimeout(async () => {
-                await fetch(`${API_URL}/${inputCode}`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ offer: data.offer, answer: pc.localDescription })
-                });
-                document.getElementById('status').textContent = 'تم إرسال الرد! جاري الربط...';
-            }, 2000);
-
-        } catch (err) {
-            alert("حدث خطأ، تأكد من الكود أو جودة الإنترنت.");
-            document.getElementById('btn-join').disabled = false;
-        }
+        });
     }
 
     // إرسال الملفات
@@ -253,36 +211,37 @@
         document.getElementById('btn-send').textContent = 'جاري الإرسال...';
         document.getElementById('btn-send').disabled = true;
 
-        const reader = new FileReader();
-        reader.onload = () => {
-            dataChannel.send(JSON.stringify({
-                name: file.name,
-                file: reader.result
-            }));
-            
-            setTimeout(() => {
-                document.getElementById('btn-send').textContent = 'إرسال الملف المشفر';
-                document.getElementById('btn-send').disabled = false;
-                fileInput.value = '';
-                alert('تم إرسال الملف بنجاح!');
-            }, 500);
-        };
-        reader.readAsDataURL(file);
+        // ميزة PeerJS: يمكن إرسال كائن File مباشرة بدون تحويله إلى Base64!
+        conn.send({
+            name: file.name,
+            file: file
+        });
+        
+        setTimeout(() => {
+            document.getElementById('btn-send').textContent = 'إرسال الملف المشفر';
+            document.getElementById('btn-send').disabled = false;
+            fileInput.value = '';
+            alert('تم إرسال الملف بنجاح!');
+        }, 500);
     }
 
     // استلام الملفات
-    function receiveFile(blob, name) {
+    function receiveFile(fileBlob, name) {
+        // تحويل البيانات المستلمة إلى رابط يمكن تحميله
+        const blob = new Blob([fileBlob]);
         const url = URL.createObjectURL(blob);
+        
         const li = document.createElement('li');
-        li.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;">${name}</span> <a href="${url}" download="${name}" class="download-btn">حفظ</a>`;
+        li.innerHTML = `<span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 70%;" title="${name}">${name}</span> <a href="${url}" download="${name}" class="download-btn">حفظ</a>`;
         document.getElementById('received-files').appendChild(li);
     }
 
-    // تنسيق مربع الإدخال تلقائياً
+    // تنسيق مربع الإدخال تلقائياً ليضع شرطة بعد أول 3 أرقام
     document.getElementById('input-code').addEventListener('input', function (e) {
-        let val = e.target.value.replace(/-/g, '');
+        // السماح بالأرقام فقط
+        let val = e.target.value.replace(/\D/g, ''); 
         if (val.length > 0) {
-            val = val.match(/.{1,4}/g).join('-');
+            val = val.match(/.{1,3}/g)?.join('-') || val;
         }
         e.target.value = val;
     });
